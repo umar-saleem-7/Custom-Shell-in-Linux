@@ -22,3 +22,22 @@
    - `MYshell` v2 enables piping (`|`) between commands, allowing the output of one command to be used as the input for another.
    - Supports multiple pipes in a single command, allowing complex command chaining.
    - Users can quit `MyShell` by pressing `<CTRL+D>`, allowing a smooth exit from the program.
+
+# MYshell - Version 3- Custom Shell with Background Execution and Zombie Handling
+
+`MYshell` v3 introduces background process execution, allowing users to run commands in the background by appending `&` at the end of the command line. This feature enables asynchronous command execution, letting users continue using the shell immediately after starting a background process. Additionally, this version includes signal handling to prevent zombie processes.
+
+## Features
+
+   - The prompt displays as `MyShell:- <current-directory>:-`, showing the current working directory to help users keep track of their location.
+   - `MYshell` v3 allows users to enter commands with arguments and options, and it forks a child process to execute the command.
+   - For standard commands, the shell waits for the child process to complete. For background commands (commands ending with `&`), the shell returns to the prompt immediately, allowing users to run multiple commands simultaneously.
+   - Users can run external commands in the background by appending `&` at the end of the command, like so:
+     ```plaintext
+     mycmd &
+     ```
+   - This lets users continue working in the shell while `mycmd` executes independently.
+   - To avoid zombie processes, `MYshell` v3 uses signal handling to capture the termination of background processes.
+   - The shell uses `sigaction()` to set up a signal handler for `SIGCHLD`, which automatically reaps finished background processes, keeping the process table clean.
+   - Users can exit `MYshell` by pressing `<CTRL+D>`, allowing a smooth exit from the program.
+
