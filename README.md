@@ -41,3 +41,16 @@
    - The shell uses `sigaction()` to set up a signal handler for `SIGCHLD`, which automatically reaps finished background processes, keeping the process table clean.
    - Users can exit `MYshell` by pressing `<CTRL+D>`, allowing a smooth exit from the program.
 
+# MYshell v4 - Custom Shell with Command History and Recall
+
+`MYshell` v4 enhances the custom shell with a command history feature, allowing users to repeat previously issued commands by referencing their command numbers. This version supports commands like `!number`, where `number` corresponds to the command's position in the history list. It maintains a history of the last 10 commands and overwrites older entries as new commands are added.
+
+## Features
+
+   - The prompt displays as `PUCITshell@<current-directory>:-`, indicating the current working directory.
+   - `MYshell` v4 accepts commands with options and arguments, forking a child process to execute them.
+   - The shell keeps track of the last 10 commands issued by the user.
+   - Users can repeat commands by typing `!number` (e.g., `!-1` for the last command or `!1` for the first command in the history).
+   - The history overwrites older entries as new commands are added beyond the last 10.
+   - For advanced users, you can implement support for command navigation using the up and down arrow keys through the `readline()` library.
+   - Users can exit `MYshell` by pressing `<CTRL+D>`, allowing a smooth exit from the program.
