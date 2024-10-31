@@ -11,11 +11,11 @@
 #define MAX_LEN 512
 #define MAXARGS 10
 #define ARGLEN 30
-#define PROMPT "myShell:- "
+#define PROMPT "MyShell:- "
 
-int execute(char *arglist[], int input_fd, int output_fd, int background);
+int execute(char *arglist[], int input_fd, int output_fd, int error_fd, int background);
 char **tokenize(char *cmdline, int *background);
-char *read_cmd(char *, FILE *);
+char *read_cmd(char *prompt, FILE *fp);
 void handle_pipes_and_execute(char **arglist, int background);
 void sigchld_handler(int signum);
 
@@ -24,7 +24,7 @@ int main() {
     struct sigaction sa;
     sa.sa_handler = sigchld_handler;
     sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
-    sigaction(SIGCHLD, &sa, 0);
+    sigaction(SIGCHLD, &sa, NULL);
 
     char *cmdline;
     char **arglist;
@@ -45,36 +45,35 @@ int main() {
 }
 
 // Execute a single command with optional redirection and background execution
-int execute(char *arglist[], int input_fd, int output_fd, int background) {
+int execute(char *arglist[], int input_fd, int output_fd, int error_fd, int background) {
     pid_t cpid = fork();
     if (cpid == -1) {
         perror("fork() failed");
         exit(1);
     }
-    if (cpid == 0) {
-        // If input redirection is specified
+    if (cpid == 0) { // Child process
         if (input_fd != -1) {
             dup2(input_fd, STDIN_FILENO);
             close(input_fd);
         }
-
-        // If output redirection is specified
         if (output_fd != -1) {
             dup2(output_fd, STDOUT_FILENO);
             close(output_fd);
+        }
+        if (error_fd != -1) {
+            dup2(error_fd, STDERR_FILENO);
+            close(error_fd);
         }
 
         execvp(arglist[0], arglist);
         perror("!...command not found...!");
         exit(1);
-    } else {
+    } else { // Parent process
         if (background) {
-            // Print background job number and PID
-            printf("[%d] %d\n", 1, cpid); 
+            printf("[%d] %d\n", 1, cpid);
             return 0;
         } else {
             int status;
-            // Wait only if foreground process
             waitpid(cpid, &status, 0);
             return status;
         }
@@ -84,12 +83,24 @@ int execute(char *arglist[], int input_fd, int output_fd, int background) {
 // Tokenize the command line input into arguments, detecting background flag
 char **tokenize(char *cmdline, int *background) {
     char **arglist = (char **)malloc(sizeof(char *) * (MAXARGS + 1));
+    if (!arglist) {
+        perror("malloc failed");
+        exit(1);
+    }
+
     for (int j = 0; j < MAXARGS + 1; j++) {
         arglist[j] = (char *)malloc(sizeof(char) * ARGLEN);
+        if (!arglist[j]) {
+            perror("malloc failed");
+            exit(1);
+        }
         bzero(arglist[j], ARGLEN);
     }
-    if (cmdline[0] == '\0')
+
+    if (cmdline[0] == '\0') {
+        free(arglist);
         return NULL;
+    }
 
     int argnum = 0;
     char *cp = cmdline;
@@ -124,20 +135,29 @@ char *read_cmd(char *prompt, FILE *fp) {
     int c;
     int pos = 0;
     char *cmdline = (char *)malloc(sizeof(char) * MAX_LEN);
+    if (!cmdline) {
+        perror("malloc failed");
+        exit(1);
+    }
     while ((c = getc(fp)) != EOF) {
         if (c == '\n')
             break;
         cmdline[pos++] = c;
+        if (pos >= MAX_LEN - 1) {
+            break;
+        }
     }
-    if (c == EOF && pos == 0)
+    if (c == EOF && pos == 0) {
+        free(cmdline);
         return NULL;
+    }
     cmdline[pos] = '\0';
     return cmdline;
 }
 
 // Handle pipes and redirection logic
 void handle_pipes_and_execute(char **arglist, int background) {
-    int input_fd = -1, output_fd = -1;
+    int input_fd = -1, output_fd = -1, error_fd = -1;
     int pipefd[2];
     int has_pipe = 0;
 
@@ -150,6 +170,7 @@ void handle_pipes_and_execute(char **arglist, int background) {
             }
             free(arglist[i]);
             arglist[i] = NULL;
+            i++; // Move past file name
         } else if (strcmp(arglist[i], ">") == 0) {
             output_fd = open(arglist[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
             if (output_fd < 0) {
@@ -158,12 +179,22 @@ void handle_pipes_and_execute(char **arglist, int background) {
             }
             free(arglist[i]);
             arglist[i] = NULL;
+            i++; // Move past file name
+        } else if (strcmp(arglist[i], "2>") == 0) {
+            error_fd = open(arglist[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (error_fd < 0) {
+                perror("Failed to open error file");
+                return;
+            }
+            free(arglist[i]);
+            arglist[i] = NULL;
+            i++; // Move past file name
         } else if (strcmp(arglist[i], "|") == 0) {
             has_pipe = 1;
             pipe(pipefd);
 
             arglist[i] = NULL;
-            execute(arglist, input_fd, pipefd[1], 0);
+            execute(arglist, input_fd, pipefd[1], error_fd, 0);
 
             close(pipefd[1]);
             input_fd = pipefd[0];
@@ -172,11 +203,12 @@ void handle_pipes_and_execute(char **arglist, int background) {
         }
     }
 
-    // Execute the final command with possible redirection and background flag
-    execute(arglist, input_fd, output_fd, background);
+    // Execute the final command with redirection
+    execute(arglist, input_fd, output_fd, error_fd, background);
 
     if (input_fd != -1) close(input_fd);
     if (output_fd != -1) close(output_fd);
+    if (error_fd != -1) close(error_fd);
 }
 
 // Signal handler for SIGCHLD to clean up terminated background processes
