@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <errno.h>
 
 #define MAX_LEN 512
 #define MAXARGS 10
@@ -31,36 +32,34 @@ int main() {
     sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
     sigaction(SIGCHLD, &sa, 0);
 
-    using_history();  // Initialize readline history
-    read_history(".my_shell_history");  // Load history from file
+    using_history();
+    read_history(".my_shell_history");
 
     char *cmdline;
     char **arglist;
 
-    while ((cmdline = readline(PROMPT)) != NULL) {  // Use readline to capture input with history support
+    while ((cmdline = readline(PROMPT)) != NULL) {
         int background = 0;
 
-        // Add non-empty command to history
+
         if (cmdline[0] != '\0') {
-            add_history(cmdline);  // Add to readline's internal history
-            add_to_history(cmdline);  // Add to our own history for !number handling
+            add_history(cmdline);
+            add_to_history(cmdline);
         }
 
-        // Handle command repetition with `!number`
-        // Handle command repetition with `!number`
+        // Handle command repetition with `!number` and `!!`
         if (cmdline[0] == '!') {
             int history_index;
-
-            if (cmdline[1] == '-') {
-                history_index = history_count - 1; // Last command
+            if (cmdline[1] == '!') { // Repeat the last command
+                history_index = history_count - 1;
             } else {
-                history_index = atoi(cmdline + 1) - 1; // Get command number
+                history_index = atoi(cmdline + 1) - 1;
             }
 
-            // Ensure the history index is valid
+
             if (history_index >= 0 && history_index < history_count) {
                 free(cmdline);
-                cmdline = strdup(history[history_index]); // Use history command
+                cmdline = strdup(history[history_index]);
                 printf("Repeating command: %s\n", cmdline);
             } else {
                 printf("No such command in history.\n");
@@ -79,15 +78,15 @@ int main() {
             free(cmdline);
         }
     }
-    
-    // Save history to a file for future sessions
+
+
     save_history();
-    
+
     printf("\n");
     return 0;
 }
 
-// Add command to history, using a circular buffer of fixed size
+
 void add_to_history(const char *cmd) {
     if (history_count == HISTORY_SIZE) {
         free(history[0]);
@@ -97,15 +96,15 @@ void add_to_history(const char *cmd) {
     history[history_count++] = strdup(cmd);
 }
 
-// Save history to a file
+
 void save_history() {
     for (int i = 0; i < history_count; i++) {
-        free(history[i]); // Free previous history entries
+        free(history[i]);
     }
     write_history(".my_shell_history");
 }
 
-// Execute a single command with optional redirection and background execution
+
 int execute(char *arglist[], int input_fd, int output_fd, int error_fd, int background) {
     pid_t cpid = fork();
     if (cpid == -1) {
@@ -141,7 +140,7 @@ int execute(char *arglist[], int input_fd, int output_fd, int error_fd, int back
     }
 }
 
-// Tokenize the command line input into arguments, detecting background flag
+
 char **tokenize(char *cmdline, int *background) {
     char **arglist = (char **)malloc(sizeof(char *) * (MAXARGS + 1));
     for (int j = 0; j < MAXARGS + 1; j++) {
@@ -177,7 +176,7 @@ char **tokenize(char *cmdline, int *background) {
     return arglist;
 }
 
-// Handle pipes and redirection logic
+
 void handle_pipes_and_execute(char **arglist, int background) {
     int input_fd = -1, output_fd = -1, error_fd = -1;
     int pipefd[2];
@@ -222,7 +221,7 @@ void handle_pipes_and_execute(char **arglist, int background) {
         }
     }
 
-    // Execute the final command with redirection
+
     execute(arglist, input_fd, output_fd, error_fd, background);
 
     if (input_fd != -1) close(input_fd);
@@ -230,8 +229,12 @@ void handle_pipes_and_execute(char **arglist, int background) {
     if (error_fd != -1) close(error_fd);
 }
 
-// Signal handler for SIGCHLD to clean up terminated background processes
+
 void sigchld_handler(int signum) {
     int status;
-    while (waitpid(-1, &status, WNOHANG) > 0);
+    while (waitpid(-1, &status, WNOHANG) > 0) {
+        if (errno == ECHILD) {
+            break;
+        }
+    }
 }
