@@ -110,7 +110,7 @@ void display_prompt(char *prompt) {
         perror("getcwd() error");
         strcpy(cwd, "unknown");
     }
-    snprintf(prompt, PATH_MAX + 50, "(%s)-[%s]:- ", PROMPT, cwd);
+    snprintf(prompt, PATH_MAX + 50, "(%s)-[%s]-$ ", PROMPT, cwd);
 }
 
 int handle_builtin(char *arglist[]) {
