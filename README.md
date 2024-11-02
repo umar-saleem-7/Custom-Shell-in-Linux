@@ -1,10 +1,10 @@
 # MyShell - Version 1 - Custom shell programmed in C
 
-`MYshell` is a lightweight, custom shell program built in C. This shell demonstrates essential features of a command-line interface, such as displaying a prompt, accepting commands, parsing them, and executing them in a child process. Additionally, it supports a controlled exit using `<CTRL+D>`.
+`MyShell` is a lightweight, custom shell program built in C. This shell demonstrates essential features of a command-line interface, such as displaying a prompt, accepting commands, parsing them, and executing them in a child process. Additionally, it supports a controlled exit using `<CTRL+D>`.
 
 ## Features
 
-   - The prompt displays as `MYshell:- <current-directory> $`, showing the current working directory for user context.
+   - The prompt displays as `MyShell:- `, showing the current working directory for user context.
    - `MYshell` allows users to enter commands with arguments in a single line.
    - It forks a child process to execute the command using `execvp`, and the parent process waits for the child process to complete.
    - Users can quit `MYshell` by pressing `<CTRL+D>`, allowing a smooth exit from the program.
@@ -13,7 +13,7 @@
 `MYshell` v2 is an upgraded version of previous custom shell programmed in C, extending the basic functionality to include I/O redirection and command piping. This version allows users to execute commands with enhanced control over file descriptors, making it a more powerful tool for command-line interactions.
 
 ## Features
-   - The prompt displays as `MyShell:- <current-directory>:-`, showing the current working directory and helping users keep track of their environment.
+   - The prompt displays as `MyShell:- `, showing the current working directory and helping users keep track of their environment.
    - `MYshell` v2 allows users to enter commands with arguments in a single line.
    - It forks a child process to execute the command using `execvp`, with the parent process waiting for the child process to complete.
    - Supports input (`<`) and output (`>`) redirection for commands.
@@ -29,7 +29,7 @@
 
 ## Features
 
-   - The prompt displays as `MyShell:- <current-directory>:-`, showing the current working directory to help users keep track of their location.
+   - The prompt displays as `MyShell:- `, showing the current working directory to help users keep track of their location.
    - `MYshell` v3 allows users to enter commands with arguments and options, and it forks a child process to execute the command.
    - For standard commands, the shell waits for the child process to complete. For background commands (commands ending with `&`), the shell returns to the prompt immediately, allowing users to run multiple commands simultaneously.
    - Users can run external commands in the background by appending `&` at the end of the command, like so:
@@ -37,7 +37,7 @@
      mycmd &
      ```
    - This lets users continue working in the shell while `mycmd` executes independently.
-   - To avoid zombie processes, `MYshell` v3 uses signal handling to capture the termination of background processes.
+   - To avoid zombie processes, `MyShell` v3 uses signal handling to capture the termination of background processes.
    - The shell uses `sigaction()` to set up a signal handler for `SIGCHLD`, which automatically reaps finished background processes, keeping the process table clean.
    - Users can exit `MYshell` by pressing `<CTRL+D>`, allowing a smooth exit from the program.
 
@@ -47,10 +47,26 @@
 
 ## Features
 
-   - The prompt displays as `MyShell:- <current-directory>:-`, indicating the current working directory.
+   - The prompt displays as `MyShell:- `, indicating the current working directory.
    - `MYshell` v4 accepts commands with options and arguments, forking a child process to execute them.
    - The shell keeps track of the last 10 commands issued by the user.
    - Users can repeat commands by typing `!number` (e.g., `!-1` for the last command or `!1` for the first command in the history).
    - The history overwrites older entries as new commands are added beyond the last 10.
    - For advanced users, you can implement support for command navigation using the up and down arrow keys through the `readline()` library.
    - Users can exit `MYshell` by pressing `<CTRL+D>`, allowing a smooth exit from the program.
+
+# MyShell - Version 5 - Custom Shell with Built-in Commands
+
+`MYshell` v5 enhances the custom shell to include built-in commands that provide essential functionalities directly within the shell. Unlike external commands, built-in commands are part of the shell's code, allowing for quicker execution and integrated features.
+
+## Features
+
+   - The prompt displays as `(MyShell) - [cwd]-$`, indicating the current working directory.
+   - The shell supports several built-in commands that can be executed without forking a new process:
+     - **`cd <directory>`**: Changes the current working directory to the specified directory.
+     - **`exit`**: Terminates the shell session and exits the program.
+     - **`jobs`**: Displays a numbered list of background processes currently executing.
+     - **`kill <job_number> / PID`**: Terminates the specified background process by sending it a `SIGKILL` signal.
+     - **`help`**: Lists all available built-in commands and their usage.
+   - For external commands, the shell searches for the executable in the system's path, forks a child process, and uses `exec()` to run the command.
+   - Users can exit `MyShell` by typing `exit` or pressing `<CTRL+D>`, allowing a smooth termination of the session.
