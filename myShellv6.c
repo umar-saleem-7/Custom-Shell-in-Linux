@@ -126,7 +126,7 @@ void display_prompt(char *prompt) {
         perror("getcwd() error");
         strcpy(cwd, "unknown");
     }
-    snprintf(prompt, PATH_MAX + 50, "\n(%s)-[%s]-\n---$ ", PROMPT, cwd);
+    snprintf(prompt, PATH_MAX + 50, "\n-(%s)-[%s]\n---$ ", PROMPT, cwd);
 }
 
 // Function to set a variable (local or global)
@@ -271,21 +271,36 @@ int handle_builtin(char *arglist[]) {
         }
     } else if (strcmp(arglist[0], "kill") == 0) {
         if (arglist[1] == NULL) {
-            fprintf(stderr, "kill: missing PID or job id\n");
+            fprintf(stderr, "kill: missing PID or job ID\n");
         } else {
-            int signal = SIGKILL;
-            int pid;
-
-            // Check if signal is provided, e.g., kill -9 <pid>
+            int signal = SIGKILL;  // Default signal is SIGKILL
+            int target_pid = -1;   // PID to kill
+            int job_id = -1;       // Initialize job ID as -1 (not found)
+            
+            // Check if a signal is provided (e.g., kill -9 <job_id/PID>)
             if (arglist[1][0] == '-') {
                 signal = atoi(arglist[1] + 1);
-                pid = atoi(arglist[2]);
+                job_id = atoi(arglist[2]);  // Job ID or PID as the next argument
             } else {
-                pid = atoi(arglist[1]);
+                job_id = atoi(arglist[1]);  // Treat arglist[1] as job ID or PID
             }
 
-            if (pid <= 0 || kill(pid, signal) != 0) {
+            // Attempt to find the PID by job ID first
+            if (job_id > 0 && job_id <= job_count && jobs[job_id - 1].pid != 0) {
+                target_pid = jobs[job_id - 1].pid;  // Retrieve PID from job ID
+            } else {
+                target_pid = job_id;  // If no job match, assume it's a PID
+            }
+
+            // Kill the process using the target PID
+            if (target_pid <= 0 || kill(target_pid, signal) != 0) {
                 perror("kill");
+            } else {
+                printf("Killed %s [%d] %d\n", (job_id == target_pid ? "process" : "job"), job_id, target_pid);
+                // Mark the job as terminated if killed by job ID
+                if (job_id <= job_count && job_id > 0 && jobs[job_id - 1].pid == target_pid) {
+                    jobs[job_id - 1].pid = 0;
+                }
             }
         }
         return 1;
