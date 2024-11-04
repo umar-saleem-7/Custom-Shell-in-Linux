@@ -86,7 +86,11 @@
 
    - **Assignment**: Variables can be assigned values using the `set` syntax.
      ```plaintext
-     set MyVar value
+     set VAR_NAME value
+     ```
+   - **Deletion**: Variables can be deleted using
+     ```plaintext
+     unset VAR_NAME
      ```
    - **Retrieval**: Retrieve variable values by prefixing with `$` or `get`.
      ```plaintext
